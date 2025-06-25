@@ -1,0 +1,73 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: poke-deck-postgres-dev
+    environment:
+      POSTGRES_DB: pokedeck
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    networks:
+      - poke-deck-network
+
+  # Backend Development
+  backend-dev:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: poke-deck-backend-dev
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/pokedeck
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: pokedeck
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      FRONTEND_URL: http://localhost:3000
+    ports:
+      - "5000:5000"
+    depends_on:
+      - postgres
+    networks:
+      - poke-deck-network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: npm run dev
+
+  # Frontend Development
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: poke-deck-frontend-dev
+    environment:
+      NODE_ENV: development
+      BACKEND_URL: http://backend-dev:5000
+      NEXT_PUBLIC_API_URL: http://localhost:5000/api
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend-dev
+    networks:
+      - poke-deck-network
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
+
+volumes:
+  postgres_dev_data:
+
+networks:
+  poke-deck-network:
+    driver: bridge

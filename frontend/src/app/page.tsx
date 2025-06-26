@@ -3,13 +3,12 @@ import Link from "next/link";
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-800">
-      {/* Navigation */}
       <nav className="p-6">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="text-white text-2xl font-bold">⚡ PokéDeck</div>
           <div>
             <Link
-              href="/auth"
+              href="/sign-in"
               className="inline-block bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-xl px-5 py-2 rounded-xl hover:from-yellow-500 hover:to-orange-600 transition-all duration-300 transform hover:scale-105 shadow-lg font-semibold"
             >
               🔑 Sign In
@@ -18,7 +17,6 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Hero Section */}
       <div className="max-w-7xl mx-auto px-6 py-20">
         <div className="text-center">
           <h1 className="text-6xl font-bold text-white mb-6">
@@ -30,16 +28,14 @@ export default function Home() {
             complete your collection, and become the ultimate Pokémon trainer!
           </p>
 
-          {/* CTA Button - This starts the main scenario */}
           <Link
-            href="/auth"
+            href="/sign-in"
             className="inline-block bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-xl px-8 py-4 rounded-xl hover:from-yellow-500 hover:to-orange-600 transition-all duration-300 transform hover:scale-105 shadow-lg font-semibold"
           >
             🎮 Start Building Your Deck
           </Link>
         </div>
 
-        {/* Feature Cards */}
         <div className="mt-20 grid md:grid-cols-3 gap-8">
           <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center">
             <div className="text-4xl mb-4">🃏</div>
@@ -75,7 +71,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* How It Works */}
         <div className="mt-20 text-center">
           <h2 className="text-4xl font-bold text-white mb-12">How It Works</h2>
           <div className="grid md:grid-cols-4 gap-6">
@@ -116,7 +111,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Footer */}
       <footer className="border-t border-white/20 mt-20 py-8">
         <div className="max-w-7xl mx-auto px-6 text-center">
           <p className="text-gray-300">

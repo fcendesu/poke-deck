@@ -9,6 +9,12 @@ import crypto from "crypto";
 import nodemailer from "nodemailer";
 import { eq, and, gte } from "drizzle-orm";
 import { users, magicLinks } from "./db/schema/index.js";
+import {
+  initializePokemonData,
+  setPokemonServiceDb,
+  getPokemonList,
+  getPokemonById,
+} from "./services/pokemonService.js";
 
 dotenv.config();
 
@@ -32,12 +38,12 @@ const pool = new Pool({
 
 export const db = drizzle(pool);
 
+// Initialize Pokemon service with database instance
+setPokemonServiceDb(db);
+
 // Email configuration
 const createEmailTransporter = () => {
   if (!process.env.EMAIL_HOST) {
-    console.warn(
-      "⚠️ EMAIL_HOST not configured. Emails will be logged to console."
-    );
     return null;
   }
 
@@ -114,7 +120,23 @@ app.get("/health", (req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString() });
 });
 
-// Magic link sign-in request
+// Simple Pokemon count
+app.get("/api/pokemon/count", async (req, res) => {
+  try {
+    const { pokemon } = await import("./db/schema/index.js");
+    const count = await db.select().from(pokemon);
+    res.json({
+      count: count.length,
+      expected: 1025,
+      isComplete: count.length >= 1025,
+      percentage: Math.round((count.length / 1025) * 100),
+    });
+  } catch (error) {
+    res.json({ count: 0, expected: 1025, isComplete: false, percentage: 0 });
+  }
+});
+
+// Magic link sign-in
 app.post("/api/auth/signin", async (req: any, res: any) => {
   try {
     const { email } = req.body;
@@ -172,7 +194,6 @@ app.post("/api/auth/signin", async (req: any, res: any) => {
     if (emailTransporter) {
       try {
         await emailTransporter.sendMail(mailOptions);
-        console.log(`✅ Magic link email sent to ${email}`);
 
         res.json({
           message: "Magic link sent! Check your email.",
@@ -188,9 +209,6 @@ app.post("/api/auth/signin", async (req: any, res: any) => {
         });
       }
     } else {
-      console.log(`🔗 Magic Link for ${email}: ${magicLinkUrl}`);
-      console.log("📧 Email (simulated):", mailOptions.subject);
-
       res.json({
         message: "Magic link generated! Check server logs for the link.",
         ...(process.env.NODE_ENV === "development" && {
@@ -199,7 +217,6 @@ app.post("/api/auth/signin", async (req: any, res: any) => {
       });
     }
   } catch (error) {
-    console.error("Magic link error:", error);
     res.status(500).json({ error: "Failed to send magic link" });
   }
 });
@@ -284,7 +301,6 @@ app.get("/api/auth/verify", async (req: any, res: any) => {
       },
     });
   } catch (error) {
-    console.error("Verification error:", error);
     res.status(500).json({ error: "Failed to verify magic link" });
   }
 });
@@ -306,24 +322,38 @@ app.post("/api/auth/signout", (req, res) => {
   res.json({ message: "Signed out successfully" });
 });
 
-// Protected routes example
+// Get Pokemon list
 app.get("/api/pokemon", authenticateToken, async (req: any, res) => {
   try {
-    res.json({
-      message: `Hello ${req.user.name}! Here's your Pokemon data.`,
-      user: req.user,
-    });
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+
+    const result = await getPokemonList(page, limit);
+    res.json(result);
   } catch (error) {
-    console.error("Error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get specific Pokemon details
+app.get("/api/pokemon/:id", authenticateToken, async (req: any, res) => {
+  try {
+    const pokemonId = parseInt(req.params.id);
+
+    const result = await getPokemonById(pokemonId);
+
+    if (!result) {
+      res.status(404).json({ error: "Pokemon not found" });
+      return;
+    }
+
+    res.json(result);
+  } catch (error) {
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(
-    `📧 Email mode: ${
-      process.env.NODE_ENV === "development" ? "Console logging" : "SMTP"
-    }`
-  );
+  // Initialize Pokemon data on startup
+  initializePokemonData();
 });

@@ -1,0 +1,64 @@
+version: "3.8"
+
+services:
+  # Production Mail Server with Postfix + Dovecot
+  mailserver:
+    image: docker.io/mailserver/docker-mailserver:latest
+    container_name: pokedeck-mailserver
+    hostname: mail.yourdomain.com
+    ports:
+      - "25:25" # SMTP
+      - "587:587" # SMTP Submission
+      - "993:993" # IMAPS
+    volumes:
+      - ./docker-data/dms/mail-data/:/var/mail/
+      - ./docker-data/dms/mail-state/:/var/mail-state/
+      - ./docker-data/dms/mail-logs/:/var/log/mail/
+      - ./docker-data/dms/config/:/tmp/docker-mailserver/
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      # General settings
+      - ENABLE_RSPAMD=1
+      - ENABLE_CLAMAV=1
+      - ENABLE_FAIL2BAN=1
+
+      # SSL/TLS settings (you'll need to add your certificates)
+      - SSL_TYPE=manual
+      - SSL_CERT_PATH=/tmp/docker-mailserver/ssl/cert.pem
+      - SSL_KEY_PATH=/tmp/docker-mailserver/ssl/key.pem
+
+      # Domain settings
+      - POSTMASTER_ADDRESS=postmaster@yourdomain.com
+      - DMS_DEBUG=0
+
+      # Security
+      - ENABLE_SPAMASSASSIN=1
+      - ENABLE_OPENDKIM=1
+      - ENABLE_OPENDMARC=1
+
+    cap_add:
+      - NET_ADMIN
+      - SYS_PTRACE
+    restart: unless-stopped
+    networks:
+      - pokedeck-network
+
+  # Web interface for mail management (optional)
+  rainloop:
+    image: hardware/rainloop
+    container_name: pokedeck-webmail
+    ports:
+      - "8080:8080"
+    volumes:
+      - rainloop_data:/rainloop/data
+    depends_on:
+      - mailserver
+    networks:
+      - pokedeck-network
+
+volumes:
+  rainloop_data:
+
+networks:
+  pokedeck-network:
+    external: true

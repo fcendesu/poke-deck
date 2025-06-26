@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  # MailHog - Simple mail server for development/testing
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: pokedeck-mailhog
+    ports:
+      - "1025:1025" # SMTP port
+      - "8025:8025" # Web UI port
+    environment:
+      MH_STORAGE: maildir
+      MH_MAILDIR_PATH: /maildir
+    volumes:
+      - mailhog_data:/maildir
+    networks:
+      - pokedeck-network
+
+volumes:
+  mailhog_data:
+
+networks:
+  pokedeck-network:
+    external: true

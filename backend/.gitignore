@@ -1,0 +1,18 @@
+# dependencies
+/node_modules
+
+# build output
+/dist
+
+# environment variables
+.env
+
+# logs
+*.log
+npm-debug.log*
+
+# misc
+.DS_Store
+
+# Drizzle
+drizzle

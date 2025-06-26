@@ -16,6 +16,16 @@ services:
     networks:
       - poke-deck-network
 
+  # MailHog - Email Testing Server
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: poke-deck-mailhog-dev
+    ports:
+      - "1025:1025" # SMTP port
+      - "8025:8025" # Web UI port
+    networks:
+      - poke-deck-network
+
   # Backend Development
   backend-dev:
     build:
@@ -32,10 +42,18 @@ services:
       DB_USER: postgres
       DB_PASSWORD: postgres
       FRONTEND_URL: http://localhost:3000
+      # MailHog Email Configuration
+      EMAIL_HOST: mailhog
+      EMAIL_PORT: 1025
+      EMAIL_SECURE: false
+      EMAIL_USER: ""
+      EMAIL_PASS: ""
+      EMAIL_FROM: "noreply@pokedeck.local"
     ports:
       - "5000:5000"
     depends_on:
       - postgres
+      - mailhog
     networks:
       - poke-deck-network
     volumes:

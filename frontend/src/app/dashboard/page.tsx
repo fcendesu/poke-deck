@@ -76,6 +76,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [pokemonData, setPokemonData] = useState<PokemonResponse | null>(null);
   const [pokemonLoading, setPokemonLoading] = useState(true);
+  const [totalOwnedCards, setTotalOwnedCards] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedPokemon, setSelectedPokemon] =
     useState<DetailedPokemon | null>(null);
@@ -121,6 +122,7 @@ export default function DashboardPage() {
     if (user) {
       fetchPokemon(currentPage, searchTerm, typeFilter, ownedFilter);
       fetchDrawStatus();
+      fetchTotalOwnedCards();
     }
   }, [user, currentPage, searchTerm, typeFilter, ownedFilter]);
 
@@ -182,6 +184,28 @@ export default function DashboardPage() {
       console.error("Error fetching Pokemon:", error);
     } finally {
       setPokemonLoading(false);
+    }
+  };
+
+  const fetchTotalOwnedCards = async () => {
+    if (!user) return;
+
+    try {
+      const response = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
+        }/pokemon?owned=owned&limit=1`,
+        {
+          credentials: "include",
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setTotalOwnedCards(data.pagination.total);
+      }
+    } catch (error) {
+      console.error("Error fetching total owned cards:", error);
     }
   };
 
@@ -310,6 +334,7 @@ export default function DashboardPage() {
         setDrawResult(data);
         fetchDrawStatus();
         fetchPokemon(currentPage, searchTerm, typeFilter, ownedFilter);
+        fetchTotalOwnedCards(); // Update owned cards count after drawing
       }
     } catch (error) {
       console.error("Error performing draw:", error);
@@ -357,7 +382,7 @@ export default function DashboardPage() {
             Your Pokémon Collection
           </h1>
           <p className="text-gray-600 mb-4">
-            {pokemonData?.pagination.total || 0} Pokémon discovered
+            {totalOwnedCards} cards owned
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 max-w-4xl">

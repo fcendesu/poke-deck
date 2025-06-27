@@ -280,6 +280,48 @@ app.get(
   }
 );
 
-app.listen(PORT, () => {
-  initializePokemonData();
+// Database connection health check with retry
+const waitForDatabase = async (maxRetries = 30, retryInterval = 2000) => {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🔌 Attempting database connection (${attempt}/${maxRetries})...`);
+      // Simple query to test connection
+      await db.execute("SELECT 1");
+      console.log("✅ Database connection established!");
+      return true;
+    } catch (error) {
+      console.log(`❌ Database connection attempt ${attempt} failed. Retrying in ${retryInterval/1000}s...`);
+      if (attempt === maxRetries) {
+        console.error("💥 Failed to connect to database after all retries:", error);
+        throw error;
+      }
+      await new Promise(resolve => setTimeout(resolve, retryInterval));
+    }
+  }
+};
+
+app.listen(PORT, async () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  
+  try {
+    console.log("🔌 Waiting for database connection...");
+    await waitForDatabase();
+    
+    console.log("�️  Running database migrations...");
+    const { migrate } = await import("drizzle-orm/node-postgres/migrator");
+    const { join } = await import("path");
+    
+    await migrate(db, { 
+      migrationsFolder: join(process.cwd(), "drizzle") 
+    });
+    console.log("✅ Database migrations completed!");
+    
+    console.log("�🔧 Initializing Pokémon data...");
+    await initializePokemonData();
+    console.log("✅ Pokémon data initialization complete!");
+  } catch (error) {
+    console.error("❌ Failed during backend initialization:", error);
+    console.log("⚠️  Server will continue running, but some features may not be available");
+  }
 });

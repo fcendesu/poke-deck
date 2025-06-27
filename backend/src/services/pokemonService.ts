@@ -21,29 +21,35 @@ export const setPokemonServiceDb = (database: any) => {
 
 export const initializePokemonData = async () => {
   try {
+    console.log("🔍 Checking if Pokémon data already exists...");
     const existingPokemon = await db.select().from(pokemon).limit(1);
 
     if (existingPokemon.length > 0) {
+      console.log("✅ Pokémon data already exists, skipping initialization");
       return;
     }
 
+    console.log("📡 Fetching Pokémon list from PokeAPI...");
     // Fetch Pokemon list from PokeAPI
     const pokemonListResponse = await axios.get(
       "https://pokeapi.co/api/v2/pokemon?limit=1025"
     );
     const pokemonList = pokemonListResponse.data.results;
+    console.log(`📋 Found ${pokemonList.length} Pokémon to process`);
 
     const batchSize = 50;
     let processed = 0;
 
     for (let i = 0; i < pokemonList.length; i += batchSize) {
       const batch = pokemonList.slice(i, i + batchSize);
+      console.log(`⏳ Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(pokemonList.length/batchSize)} (${processed}/${pokemonList.length} total)`);
 
       const pokemonPromises = batch.map(async (pokemonRef: any) => {
         try {
           const response = await axios.get(pokemonRef.url);
           return response.data;
         } catch (error) {
+          console.error(`❌ Failed to fetch ${pokemonRef.name}:`, error);
           return null;
         }
       });
@@ -175,12 +181,19 @@ export const initializePokemonData = async () => {
           }
 
           processed++;
-        } catch (dbError) {}
+        } catch (dbError) {
+          console.error(`❌ Database error for ${pokemonData.name}:`, dbError);
+        }
       }
 
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
-  } catch (error) {}
+    
+    console.log(`🎉 Successfully processed ${processed} Pokémon!`);
+  } catch (error) {
+    console.error("💥 Critical error during Pokémon data initialization:", error);
+    throw error;
+  }
 };
 
 export const getPokemonList = async (

@@ -9,6 +9,8 @@ import {
   setPokemonServiceDb,
   getPokemonList,
   getPokemonById,
+  performDailyDraw,
+  getUserDrawStatus,
 } from "./services/pokemonService.js";
 import {
   sendMagicLink,
@@ -127,7 +129,7 @@ app.get(
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
 
-      const result = await getPokemonList(page, limit);
+      const result = await getPokemonList(page, limit, req.user.id);
       res.json(result);
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
@@ -143,7 +145,7 @@ app.get(
     try {
       const pokemonId = parseInt(req.params.id);
 
-      const result = await getPokemonById(pokemonId);
+      const result = await getPokemonById(pokemonId, req.user.id);
 
       if (!result) {
         res.status(404).json({ error: "Pokemon not found" });
@@ -151,6 +153,33 @@ app.get(
       }
 
       res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// Daily draw
+app.post(
+  "/api/daily-draw",
+  authenticateToken,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const result = await performDailyDraw(req.user.id);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+app.get(
+  "/api/daily-draw/status",
+  authenticateToken,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const status = await getUserDrawStatus(req.user.id);
+      res.json(status);
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
     }

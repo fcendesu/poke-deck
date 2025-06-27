@@ -27,6 +27,7 @@ interface Pokemon {
   weight?: number;
   stats?: PokemonStat[];
   types?: PokemonType[];
+  isOwned?: boolean;
 }
 
 interface PokemonCardProps {
@@ -89,13 +90,14 @@ const PokemonCard: React.FC<PokemonCardProps> = ({ pokemon, onClick }) => {
 
   return (
     <div
-      className={`bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden cursor-pointer group ${
+      className={`${
+        pokemon.isOwned === false ? "opacity-60 saturate-0 brightness-75" : ""
+      } bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden cursor-pointer group ${
         onClick ? "hover:scale-105" : ""
       }`}
       onClick={onClick}
     >
       <div className="relative bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        {/* Pokemon Types */}
         {pokemon.types && pokemon.types.length > 0 && (
           <div className="absolute top-2 left-2 flex flex-col gap-1">
             {pokemon.types.map((type) => (
@@ -103,7 +105,9 @@ const PokemonCard: React.FC<PokemonCardProps> = ({ pokemon, onClick }) => {
                 key={type.id}
                 className={`${getTypeColor(
                   type.typeName
-                )} text-white text-xs px-2 py-1 rounded-full font-bold shadow-sm`}
+                )} text-white text-xs px-2 py-1 rounded-full font-bold shadow-sm ${
+                  pokemon.isOwned === false ? "opacity-60" : ""
+                }`}
               >
                 {type.typeName.toUpperCase()}
               </span>
@@ -129,26 +133,32 @@ const PokemonCard: React.FC<PokemonCardProps> = ({ pokemon, onClick }) => {
       </div>
 
       <div className="p-3">
-        <h3 className="text-base font-bold text-gray-900 text-center group-hover:text-blue-600 transition-colors mb-2">
+        <h3
+          className={`text-base font-bold text-center group-hover:text-blue-600 transition-colors mb-2 ${
+            pokemon.isOwned === false ? "text-gray-500" : "text-gray-900"
+          }`}
+        >
           {capitalizeFirstLetter(pokemon.name)}
         </h3>
 
-        {pokemon.stats && pokemon.stats.length > 0 && (
-          <div className="grid grid-cols-3 gap-1 text-xs">
-            {pokemon.stats.slice(0, 6).map((stat) => (
-              <div key={stat.id} className="text-center">
-                <div className={`font-bold ${getStatColor(stat.statName)}`}>
-                  {getStatAbbreviation(stat.statName)}
+        {pokemon.stats &&
+          pokemon.stats.length > 0 &&
+          pokemon.isOwned !== false && (
+            <div className="grid grid-cols-3 gap-1 text-xs">
+              {pokemon.stats.slice(0, 6).map((stat) => (
+                <div key={stat.id} className="text-center">
+                  <div className={`font-bold ${getStatColor(stat.statName)}`}>
+                    {getStatAbbreviation(stat.statName)}
+                  </div>
+                  <div className="text-gray-600 font-semibold">
+                    {stat.baseStat}
+                  </div>
                 </div>
-                <div className="text-gray-600 font-semibold">
-                  {stat.baseStat}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
 
-        {(pokemon.height || pokemon.weight) && (
+        {(pokemon.height || pokemon.weight) && pokemon.isOwned !== false && (
           <div className="flex justify-between mt-2 text-xs text-gray-500">
             {pokemon.height && (
               <span>H: {(pokemon.height / 10).toFixed(1)}m</span>

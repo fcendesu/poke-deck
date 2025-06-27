@@ -1,5 +1,5 @@
 import axios from "axios";
-import { eq } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import {
   pokemon,
   pokemonTypes,
@@ -9,6 +9,8 @@ import {
   pokemonForms,
   pokemonPastTypes,
   pokemonPastAbilities,
+  userCardCollection,
+  dailyDraws,
   type Pokemon,
   type PokemonStat,
   type PokemonType,
@@ -185,7 +187,11 @@ export const initializePokemonData = async () => {
   } catch (error) {}
 };
 
-export const getPokemonList = async (page: number = 1, limit: number = 20) => {
+export const getPokemonList = async (
+  page: number = 1,
+  limit: number = 20,
+  userId?: number
+) => {
   const offset = (page - 1) * limit;
 
   const pokemonList = await db
@@ -216,10 +222,27 @@ export const getPokemonList = async (page: number = 1, limit: number = 20) => {
         .from(pokemonTypes)
         .where(eq(pokemonTypes.pokemonId, poke.id));
 
+      // Check if user owns this card
+      let isOwned = false;
+      if (userId) {
+        const collection = await db
+          .select()
+          .from(userCardCollection)
+          .where(
+            and(
+              eq(userCardCollection.userId, userId),
+              eq(userCardCollection.pokemonId, poke.id)
+            )
+          )
+          .limit(1);
+        isOwned = collection.length > 0;
+      }
+
       return {
         ...poke,
         stats,
         types,
+        isOwned,
       };
     })
   );
@@ -237,7 +260,7 @@ export const getPokemonList = async (page: number = 1, limit: number = 20) => {
   };
 };
 
-export const getPokemonById = async (pokeApiId: number) => {
+export const getPokemonById = async (pokeApiId: number, userId?: number) => {
   const pokemonData = await db
     .select()
     .from(pokemon)
@@ -246,6 +269,33 @@ export const getPokemonById = async (pokeApiId: number) => {
 
   if (!pokemonData.length) {
     return null;
+  }
+
+  // Check if user owns this card
+  let isOwned = false;
+  if (userId) {
+    const collection = await db
+      .select()
+      .from(userCardCollection)
+      .where(
+        and(
+          eq(userCardCollection.userId, userId),
+          eq(userCardCollection.pokemonId, pokemonData[0].id)
+        )
+      )
+      .limit(1);
+    isOwned = collection.length > 0;
+  }
+
+  if (!isOwned && userId) {
+    return {
+      pokemon: pokemonData[0],
+      types: [],
+      stats: [],
+      abilities: [],
+      isOwned: false,
+      message: "You need to unlock this card first by drawing cards!",
+    };
   }
 
   const types = await db
@@ -268,5 +318,161 @@ export const getPokemonById = async (pokeApiId: number) => {
     types,
     stats,
     abilities,
+    isOwned: true,
+  };
+};
+
+export const performDailyDraw = async (userId: number) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  // Check if user has already drawn today
+  const existingDraw = await db
+    .select()
+    .from(dailyDraws)
+    .where(
+      and(
+        eq(dailyDraws.userId, userId),
+        sql`${dailyDraws.drawDate} >= ${today}`,
+        sql`${dailyDraws.drawDate} < ${tomorrow}`
+      )
+    )
+    .limit(1);
+
+  if (existingDraw.length > 0 && existingDraw[0].cardsDrawn >= 20) {
+    return {
+      success: false,
+      message: "Daily draw limit reached. Come back tomorrow!",
+      cardsDrawn: [],
+      remainingDraws: 0,
+    };
+  }
+
+  const currentDrawCount =
+    existingDraw.length > 0 ? existingDraw[0].cardsDrawn : 0;
+  const remainingDraws = Math.max(0, 20 - currentDrawCount);
+
+  if (remainingDraws === 0) {
+    return {
+      success: false,
+      message: "Daily draw limit reached. Come back tomorrow!",
+      cardsDrawn: [],
+      remainingDraws: 0,
+    };
+  }
+
+  // Draw random Pokemon
+  const drawCount = Math.min(5, remainingDraws); // Draw 5 cards at a time
+  const totalPokemon = await db.select({ count: sql`count(*)` }).from(pokemon);
+  const total = Number(totalPokemon[0].count);
+
+  const drawnCards = [];
+  const newCards = [];
+
+  for (let i = 0; i < drawCount; i++) {
+    const randomOffset = Math.floor(Math.random() * total);
+    const randomPokemon = await db
+      .select()
+      .from(pokemon)
+      .limit(1)
+      .offset(randomOffset);
+
+    if (randomPokemon.length > 0) {
+      const pokemonData = randomPokemon[0];
+
+      const existingCard = await db
+        .select()
+        .from(userCardCollection)
+        .where(
+          and(
+            eq(userCardCollection.userId, userId),
+            eq(userCardCollection.pokemonId, pokemonData.id)
+          )
+        )
+        .limit(1);
+
+      const isNewCard = existingCard.length === 0;
+
+      if (isNewCard) {
+        await db.insert(userCardCollection).values({
+          userId,
+          pokemonId: pokemonData.id,
+          quantity: 1,
+        });
+        newCards.push(pokemonData);
+      } else {
+        await db
+          .update(userCardCollection)
+          .set({
+            quantity: sql`${userCardCollection.quantity} + 1`,
+            lastDrawnAt: new Date(),
+          })
+          .where(
+            and(
+              eq(userCardCollection.userId, userId),
+              eq(userCardCollection.pokemonId, pokemonData.id)
+            )
+          );
+      }
+
+      drawnCards.push({
+        ...pokemonData,
+        isNewCard,
+        quantity: isNewCard ? 1 : existingCard[0].quantity + 1,
+      });
+    }
+  }
+
+  if (existingDraw.length > 0) {
+    await db
+      .update(dailyDraws)
+      .set({ cardsDrawn: currentDrawCount + drawCount })
+      .where(eq(dailyDraws.id, existingDraw[0].id));
+  } else {
+    await db.insert(dailyDraws).values({
+      userId,
+      drawDate: new Date(),
+      cardsDrawn: drawCount,
+    });
+  }
+
+  return {
+    success: true,
+    message: `Drew ${drawCount} cards! ${newCards.length} new cards unlocked!`,
+    cardsDrawn: drawnCards,
+    newCards: newCards,
+    remainingDraws: remainingDraws - drawCount,
+  };
+};
+
+export const getUserDrawStatus = async (userId: number) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const existingDraw = await db
+    .select()
+    .from(dailyDraws)
+    .where(
+      and(
+        eq(dailyDraws.userId, userId),
+        sql`${dailyDraws.drawDate} >= ${today}`,
+        sql`${dailyDraws.drawDate} < ${tomorrow}`
+      )
+    )
+    .limit(1);
+
+  const cardsDrawn = existingDraw.length > 0 ? existingDraw[0].cardsDrawn : 0;
+  const remainingDraws = Math.max(0, 20 - cardsDrawn);
+
+  return {
+    cardsDrawn,
+    remainingDraws,
+    canDraw: remainingDraws > 0,
   };
 };

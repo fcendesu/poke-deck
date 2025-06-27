@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import PokemonCard from "../../components/PokemonCard";
+import PokemonModal from "../../components/PokemonModal";
 
 interface PokemonStat {
   id: number;
@@ -18,6 +19,31 @@ interface PokemonType {
   pokemonId: number;
   slot: number;
   typeName: string;
+}
+
+interface PokemonAbility {
+  id: number;
+  pokemonId: number;
+  abilityName: string;
+  isHidden: boolean;
+  slot: number;
+}
+
+interface DetailedPokemon {
+  pokemon: {
+    id: number;
+    pokeApiId: number;
+    name: string;
+    spriteDefault: string;
+    spriteShiny: string;
+    spriteOfficialArtwork: string;
+    baseExperience?: number;
+    height?: number;
+    weight?: number;
+  };
+  types: PokemonType[];
+  stats: PokemonStat[];
+  abilities: PokemonAbility[];
 }
 
 interface Pokemon {
@@ -50,6 +76,10 @@ export default function DashboardPage() {
   const [pokemonData, setPokemonData] = useState<PokemonResponse | null>(null);
   const [pokemonLoading, setPokemonLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedPokemon, setSelectedPokemon] =
+    useState<DetailedPokemon | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -130,6 +160,43 @@ export default function DashboardPage() {
     }
   };
 
+  const fetchPokemonDetails = async (pokeApiId: number) => {
+    setModalLoading(true);
+    setIsModalOpen(true);
+    try {
+      const response = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
+        }/pokemon/${pokeApiId}`,
+        {
+          credentials: "include",
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setSelectedPokemon(data);
+      } else {
+        console.error("Failed to fetch Pokemon details");
+        setSelectedPokemon(null);
+      }
+    } catch (error) {
+      console.error("Error fetching Pokemon details:", error);
+      setSelectedPokemon(null);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const handleCardClick = (pokemon: Pokemon) => {
+    fetchPokemonDetails(pokemon.pokeApiId);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedPokemon(null);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -178,14 +245,11 @@ export default function DashboardPage() {
                 <PokemonCard
                   key={pokemon.id}
                   pokemon={pokemon}
-                  onClick={() => {
-                    console.log(`Clicked on ${pokemon.name}`);
-                  }}
+                  onClick={() => handleCardClick(pokemon)}
                 />
               ))}
             </div>
 
-            {/* Pagination */}
             {pokemonData && pokemonData.pagination.totalPages > 1 && (
               <div className="flex justify-center items-center space-x-4 mt-8">
                 <button
@@ -220,6 +284,13 @@ export default function DashboardPage() {
           </>
         )}
       </main>
+
+      <PokemonModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        pokemonData={selectedPokemon}
+        loading={modalLoading}
+      />
     </div>
   );
 }

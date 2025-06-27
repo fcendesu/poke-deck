@@ -173,6 +173,45 @@ export const dailyDraws = pgTable("daily_draws", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Battle system tables
+export const battles = pgTable("battles", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  opponentType: varchar("opponent_type", { length: 50 }).notNull(), // 'bot', 'player'
+  opponentId: integer("opponent_id"), // null for bot battles
+  playerTeam: json("player_team").notNull(), // array of pokemon IDs
+  opponentTeam: json("opponent_team").notNull(), // array of pokemon data
+  battleState: json("battle_state"), // current battle state
+  winner: varchar("winner", { length: 50 }), // 'player', 'opponent', null if ongoing
+  isCompleted: boolean("is_completed").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const battleMoves = pgTable("battle_moves", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(),
+  power: integer("power").default(0),
+  accuracy: integer("accuracy").default(100),
+  pp: integer("pp").default(5),
+  category: varchar("category", { length: 50 }).notNull(), // 'physical', 'special', 'status'
+  description: text("description"),
+});
+
+export const battleStats = pgTable("battle_stats", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  totalBattles: integer("total_battles").default(0),
+  wins: integer("wins").default(0),
+  losses: integer("losses").default(0),
+  winStreak: integer("win_streak").default(0),
+  bestWinStreak: integer("best_win_streak").default(0),
+  rating: integer("rating").default(1000), // ELO-style rating
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type MagicLink = typeof magicLinks.$inferSelect;
@@ -203,3 +242,10 @@ export type UserCardCollection = typeof userCardCollection.$inferSelect;
 export type NewUserCardCollection = typeof userCardCollection.$inferInsert;
 export type DailyDraw = typeof dailyDraws.$inferSelect;
 export type NewDailyDraw = typeof dailyDraws.$inferInsert;
+
+export type Battle = typeof battles.$inferSelect;
+export type NewBattle = typeof battles.$inferInsert;
+export type BattleMove = typeof battleMoves.$inferSelect;
+export type NewBattleMove = typeof battleMoves.$inferInsert;
+export type BattleStat = typeof battleStats.$inferSelect;
+export type NewBattleStat = typeof battleStats.$inferInsert;

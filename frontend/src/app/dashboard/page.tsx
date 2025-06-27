@@ -334,6 +334,12 @@ export default function DashboardPage() {
             ⚡ PokéDeck
           </Link>
           <div className="flex items-center space-x-4">
+            <Link
+              href="/battle"
+              className="inline-block bg-gradient-to-r from-red-500 to-pink-600 text-white px-4 py-2 rounded-xl hover:from-red-600 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 shadow-lg font-semibold"
+            >
+              ⚔️ Battle Arena
+            </Link>
             <span className="text-gray-600">Welcome, {user?.name}!</span>
             <button
               onClick={handleSignOut}

@@ -17,6 +17,12 @@ import {
   verifyMagicLink,
   setAuthServiceDb,
 } from "./services/authService.js";
+import {
+  createBattle,
+  performMove,
+  getUserBattleStats,
+  setBattleServiceDb,
+} from "./services/battleService.js";
 import { authenticateToken, AuthenticatedRequest } from "./middleware/auth.js";
 
 dotenv.config();
@@ -38,6 +44,7 @@ export const db = drizzle(pool);
 
 setPokemonServiceDb(db);
 setAuthServiceDb(db);
+setBattleServiceDb(db);
 
 // Middleware
 app.use(
@@ -192,6 +199,83 @@ app.get(
       res.json(status);
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// Create battle
+app.post(
+  "/api/battle",
+  authenticateToken,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const { opponentId } = req.body;
+      const result = await createBattle(req.user.id, opponentId);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+app.post(
+  "/api/battle/start",
+  authenticateToken,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const { team } = req.body;
+
+      if (!team || !Array.isArray(team) || team.length !== 3) {
+        res
+          .status(400)
+          .json({ error: "Team must contain exactly 3 Pokémon IDs" });
+        return;
+      }
+
+      const battle = await createBattle(req.user.id, team);
+      res.json(battle);
+    } catch (error: any) {
+      console.error("Battle start error:", error);
+      res
+        .status(500)
+        .json({ error: error.message || "Failed to start battle" });
+    }
+  }
+);
+
+app.post(
+  "/api/battle/move",
+  authenticateToken,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const { moveIndex } = req.body;
+
+      if (typeof moveIndex !== "number" || moveIndex < 0 || moveIndex > 3) {
+        res.status(400).json({ error: "Invalid move index" });
+        return;
+      }
+
+      const battle = await performMove(req.user.id, moveIndex);
+      res.json(battle);
+    } catch (error: any) {
+      console.error("Battle move error:", error);
+      res
+        .status(500)
+        .json({ error: error.message || "Failed to perform move" });
+    }
+  }
+);
+
+app.get(
+  "/api/battle/stats",
+  authenticateToken,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const stats = await getUserBattleStats(req.user.id);
+      res.json(stats);
+    } catch (error) {
+      console.error("Battle stats error:", error);
+      res.status(500).json({ error: "Failed to get battle stats" });
     }
   }
 );

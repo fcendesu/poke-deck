@@ -88,6 +88,29 @@ export default function DashboardPage() {
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(
     null
   );
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [ownedFilter, setOwnedFilter] = useState("all");
+  const availableTypes = [
+    "normal",
+    "fire",
+    "water",
+    "electric",
+    "grass",
+    "ice",
+    "fighting",
+    "poison",
+    "ground",
+    "flying",
+    "psychic",
+    "bug",
+    "rock",
+    "ghost",
+    "dragon",
+    "dark",
+    "steel",
+    "fairy",
+    "stellar",
+  ];
   const router = useRouter();
 
   useEffect(() => {
@@ -96,10 +119,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (user) {
-      fetchPokemon(currentPage, searchTerm);
+      fetchPokemon(currentPage, searchTerm, typeFilter, ownedFilter);
       fetchDrawStatus();
     }
-  }, [user, currentPage, searchTerm]);
+  }, [user, currentPage, searchTerm, typeFilter, ownedFilter]);
 
   const checkAuth = async () => {
     try {
@@ -125,16 +148,25 @@ export default function DashboardPage() {
     }
   };
 
-  const fetchPokemon = async (page: number = 1, search: string = "") => {
+  const fetchPokemon = async (
+    page: number = 1,
+    search: string = "",
+    type: string = "all",
+    owned: string = "all"
+  ) => {
     if (!user) return;
 
     setPokemonLoading(true);
     try {
       const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
+      const typeParam =
+        type !== "all" ? `&type=${encodeURIComponent(type)}` : "";
+      const ownedParam =
+        owned !== "all" ? `&owned=${encodeURIComponent(owned)}` : "";
       const response = await fetch(
         `${
           process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
-        }/pokemon?page=${page}&limit=60${searchParam}`,
+        }/pokemon?page=${page}&limit=60${searchParam}${typeParam}${ownedParam}`,
         {
           credentials: "include",
         }
@@ -220,10 +252,24 @@ export default function DashboardPage() {
     }
 
     const newTimeout = setTimeout(() => {
-      fetchPokemon(1, value);
+      fetchPokemon(1, value, typeFilter, ownedFilter);
     }, 300);
 
     setSearchTimeout(newTimeout);
+  };
+
+  const handleTypeFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setTypeFilter(value);
+    setCurrentPage(1);
+    fetchPokemon(1, searchTerm, value, ownedFilter);
+  };
+
+  const handleOwnedFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setOwnedFilter(value);
+    setCurrentPage(1);
+    fetchPokemon(1, searchTerm, typeFilter, value);
   };
 
   const fetchDrawStatus = async () => {
@@ -263,7 +309,7 @@ export default function DashboardPage() {
         const data = await response.json();
         setDrawResult(data);
         fetchDrawStatus();
-        fetchPokemon(currentPage, searchTerm);
+        fetchPokemon(currentPage, searchTerm, typeFilter, ownedFilter);
       }
     } catch (error) {
       console.error("Error performing draw:", error);
@@ -308,29 +354,54 @@ export default function DashboardPage() {
             {pokemonData?.pagination.total || 0} Pokémon discovered
           </p>
 
-          <div className="relative max-w-md">
-            <input
-              type="text"
-              placeholder="Search Pokémon..."
-              value={searchTerm}
-              onChange={handleSearchChange}
-              className="w-full px-4 py-3 pl-12 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
-            />
-            <div className="absolute inset-y-0 left-0 flex items-center pl-4">
-              <svg
-                className="w-5 h-5 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
+          <div className="flex flex-col sm:flex-row gap-4 max-w-4xl">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder="Search Pokémon..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                className="w-full px-4 py-3 pl-12 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+              />
+              <div className="absolute inset-y-0 left-0 flex items-center pl-4">
+                <svg
+                  className="w-5 h-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
             </div>
+
+            <select
+              value={typeFilter}
+              onChange={handleTypeFilterChange}
+              className="px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+            >
+              <option value="all">All Types</option>
+              {availableTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={ownedFilter}
+              onChange={handleOwnedFilterChange}
+              className="px-4 py-3 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+            >
+              <option value="all">All Cards</option>
+              <option value="owned">Owned Cards</option>
+              <option value="unowned">Unowned Cards</option>
+            </select>
           </div>
         </div>
 

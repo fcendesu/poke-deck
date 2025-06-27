@@ -11,9 +11,6 @@ import {
   pokemonPastAbilities,
   userCardCollection,
   dailyDraws,
-  type Pokemon,
-  type PokemonStat,
-  type PokemonType,
 } from "../db/schema/index.js";
 
 export let db: any;
@@ -24,7 +21,6 @@ export const setPokemonServiceDb = (database: any) => {
 
 export const initializePokemonData = async () => {
   try {
-    // Check if pokemon table has any data
     const existingPokemon = await db.select().from(pokemon).limit(1);
 
     if (existingPokemon.length > 0) {
@@ -191,11 +187,13 @@ export const getPokemonList = async (
   page: number = 1,
   limit: number = 20,
   userId?: number,
-  search?: string
+  search?: string,
+  typeFilter?: string,
+  ownedFilter?: string
 ) => {
   const offset = (page - 1) * limit;
 
-  let query = db
+  let baseQuery = db
     .select({
       id: pokemon.id,
       pokeApiId: pokemon.pokeApiId,
@@ -209,14 +207,97 @@ export const getPokemonList = async (
     })
     .from(pokemon);
 
-  // Add search filter if search term is provided
-  if (search && search.trim() !== "") {
-    query = query.where(
-      sql`LOWER(${pokemon.name}) LIKE LOWER(${"%" + search.trim() + "%"})`
-    );
+  if (ownedFilter === "owned" && userId) {
+    baseQuery = baseQuery
+      .innerJoin(
+        userCardCollection,
+        eq(pokemon.id, userCardCollection.pokemonId)
+      )
+      .where(eq(userCardCollection.userId, userId));
+  } else if (ownedFilter === "unowned" && userId) {
+    // For unowned, exclude Pokemon that exist in user's collection
+    baseQuery = baseQuery
+      .leftJoin(
+        userCardCollection,
+        and(
+          eq(pokemon.id, userCardCollection.pokemonId),
+          eq(userCardCollection.userId, userId)
+        )
+      )
+      .where(sql`${userCardCollection.pokemonId} IS NULL`);
   }
 
-  const pokemonList = await query.limit(limit).offset(offset);
+  if (typeFilter && typeFilter !== "all") {
+    if (ownedFilter === "owned" && userId) {
+      baseQuery = baseQuery
+        .leftJoin(pokemonTypes, eq(pokemon.id, pokemonTypes.pokemonId))
+        .where(
+          and(
+            eq(userCardCollection.userId, userId),
+            eq(pokemonTypes.typeName, typeFilter)
+          )
+        );
+    } else if (ownedFilter === "unowned" && userId) {
+      baseQuery = baseQuery
+        .leftJoin(pokemonTypes, eq(pokemon.id, pokemonTypes.pokemonId))
+        .where(
+          and(
+            sql`${userCardCollection.pokemonId} IS NULL`,
+            eq(pokemonTypes.typeName, typeFilter)
+          )
+        );
+    } else {
+      baseQuery = baseQuery
+        .leftJoin(pokemonTypes, eq(pokemon.id, pokemonTypes.pokemonId))
+        .where(eq(pokemonTypes.typeName, typeFilter));
+    }
+  }
+
+  if (search && search.trim() !== "") {
+    const searchCondition = sql`LOWER(${pokemon.name}) LIKE LOWER(${
+      "%" + search.trim() + "%"
+    })`;
+
+    if (ownedFilter === "owned" && userId) {
+      if (typeFilter && typeFilter !== "all") {
+        baseQuery = baseQuery.where(
+          and(
+            eq(userCardCollection.userId, userId),
+            eq(pokemonTypes.typeName, typeFilter),
+            searchCondition
+          )
+        );
+      } else {
+        baseQuery = baseQuery.where(
+          and(eq(userCardCollection.userId, userId), searchCondition)
+        );
+      }
+    } else if (ownedFilter === "unowned" && userId) {
+      if (typeFilter && typeFilter !== "all") {
+        baseQuery = baseQuery.where(
+          and(
+            sql`${userCardCollection.pokemonId} IS NULL`,
+            eq(pokemonTypes.typeName, typeFilter),
+            searchCondition
+          )
+        );
+      } else {
+        baseQuery = baseQuery.where(
+          and(sql`${userCardCollection.pokemonId} IS NULL`, searchCondition)
+        );
+      }
+    } else {
+      if (typeFilter && typeFilter !== "all") {
+        baseQuery = baseQuery.where(
+          and(eq(pokemonTypes.typeName, typeFilter), searchCondition)
+        );
+      } else {
+        baseQuery = baseQuery.where(searchCondition);
+      }
+    }
+  }
+
+  const pokemonList = await baseQuery.limit(limit).offset(offset);
 
   const pokemonWithStats = await Promise.all(
     pokemonList.map(async (poke: any) => {
@@ -230,7 +311,6 @@ export const getPokemonList = async (
         .from(pokemonTypes)
         .where(eq(pokemonTypes.pokemonId, poke.id));
 
-      // Check if user owns this card
       let isOwned = false;
       if (userId) {
         const collection = await db
@@ -255,13 +335,100 @@ export const getPokemonList = async (
     })
   );
 
-  // Get total count with search filter applied
-  let totalQuery = db.select({ count: sql`count(*)` }).from(pokemon);
-  if (search && search.trim() !== "") {
-    totalQuery = totalQuery.where(
-      sql`LOWER(${pokemon.name}) LIKE LOWER(${"%" + search.trim() + "%"})`
-    );
+  // Calculate total count with same filters (no pagination)
+  let totalQuery = db
+    .select({ count: sql`count(DISTINCT ${pokemon.id})` })
+    .from(pokemon);
+
+  if (ownedFilter === "owned" && userId) {
+    totalQuery = totalQuery
+      .innerJoin(
+        userCardCollection,
+        eq(pokemon.id, userCardCollection.pokemonId)
+      )
+      .where(eq(userCardCollection.userId, userId));
+  } else if (ownedFilter === "unowned" && userId) {
+    totalQuery = totalQuery
+      .leftJoin(
+        userCardCollection,
+        and(
+          eq(pokemon.id, userCardCollection.pokemonId),
+          eq(userCardCollection.userId, userId)
+        )
+      )
+      .where(sql`${userCardCollection.pokemonId} IS NULL`);
   }
+
+  if (typeFilter && typeFilter !== "all") {
+    if (ownedFilter === "owned" && userId) {
+      totalQuery = totalQuery
+        .leftJoin(pokemonTypes, eq(pokemon.id, pokemonTypes.pokemonId))
+        .where(
+          and(
+            eq(userCardCollection.userId, userId),
+            eq(pokemonTypes.typeName, typeFilter)
+          )
+        );
+    } else if (ownedFilter === "unowned" && userId) {
+      totalQuery = totalQuery
+        .leftJoin(pokemonTypes, eq(pokemon.id, pokemonTypes.pokemonId))
+        .where(
+          and(
+            sql`${userCardCollection.pokemonId} IS NULL`,
+            eq(pokemonTypes.typeName, typeFilter)
+          )
+        );
+    } else {
+      totalQuery = totalQuery
+        .leftJoin(pokemonTypes, eq(pokemon.id, pokemonTypes.pokemonId))
+        .where(eq(pokemonTypes.typeName, typeFilter));
+    }
+  }
+
+  if (search && search.trim() !== "") {
+    const searchCondition = sql`LOWER(${pokemon.name}) LIKE LOWER(${
+      "%" + search.trim() + "%"
+    })`;
+
+    if (ownedFilter === "owned" && userId) {
+      if (typeFilter && typeFilter !== "all") {
+        totalQuery = totalQuery.where(
+          and(
+            eq(userCardCollection.userId, userId),
+            eq(pokemonTypes.typeName, typeFilter),
+            searchCondition
+          )
+        );
+      } else {
+        totalQuery = totalQuery.where(
+          and(eq(userCardCollection.userId, userId), searchCondition)
+        );
+      }
+    } else if (ownedFilter === "unowned" && userId) {
+      if (typeFilter && typeFilter !== "all") {
+        totalQuery = totalQuery.where(
+          and(
+            sql`${userCardCollection.pokemonId} IS NULL`,
+            eq(pokemonTypes.typeName, typeFilter),
+            searchCondition
+          )
+        );
+      } else {
+        totalQuery = totalQuery.where(
+          and(sql`${userCardCollection.pokemonId} IS NULL`, searchCondition)
+        );
+      }
+    } else {
+      if (typeFilter && typeFilter !== "all") {
+        totalQuery = totalQuery.where(
+          and(eq(pokemonTypes.typeName, typeFilter), searchCondition)
+        );
+      } else {
+        totalQuery = totalQuery.where(searchCondition);
+      }
+    }
+  }
+
   const totalResult = await totalQuery;
   const total = Number(totalResult[0].count);
 
@@ -287,7 +454,6 @@ export const getPokemonById = async (pokeApiId: number, userId?: number) => {
     return null;
   }
 
-  // Check if user owns this card
   let isOwned = false;
   if (userId) {
     const collection = await db

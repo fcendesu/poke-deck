@@ -234,9 +234,9 @@ export default function BattleArenaPage() {
             <span className="text-white/80">Trainer: {user?.name}</span>
             <Link
               href="/dashboard"
-              className="text-white/80 hover:text-white transition-colors"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-2 rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-300 transform hover:scale-105 shadow-lg font-semibold"
             >
-              Back to Collection
+              ← Back to Collection
             </Link>
           </div>
         </div>
@@ -568,15 +568,15 @@ export default function BattleArenaPage() {
                           setBattleState(null);
                           setSelectedTeam([]);
                         }}
-                        className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 font-bold"
+                        className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg font-bold"
                       >
-                        Battle Again
+                        ⚔️ Battle Again
                       </button>
                       <Link
                         href="/dashboard"
-                        className="bg-gradient-to-r from-gray-500 to-gray-600 text-white px-6 py-3 rounded-xl hover:from-gray-600 hover:to-gray-700 transition-all duration-300 font-bold inline-block"
+                        className="inline-flex items-center gap-2 bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-300 transform hover:scale-105 shadow-lg font-bold"
                       >
-                        Back to Collection
+                        🏠 Back to Collection
                       </Link>
                     </div>
                   </div>

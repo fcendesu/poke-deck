@@ -84,6 +84,10 @@ export default function DashboardPage() {
   const [drawStatus, setDrawStatus] = useState<any>(null);
   const [drawResult, setDrawResult] = useState<any>(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(
+    null
+  );
   const router = useRouter();
 
   useEffect(() => {
@@ -92,10 +96,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (user) {
-      fetchPokemon(currentPage);
+      fetchPokemon(currentPage, searchTerm);
       fetchDrawStatus();
     }
-  }, [user, currentPage]);
+  }, [user, currentPage, searchTerm]);
 
   const checkAuth = async () => {
     try {
@@ -121,15 +125,16 @@ export default function DashboardPage() {
     }
   };
 
-  const fetchPokemon = async (page: number = 1) => {
+  const fetchPokemon = async (page: number = 1, search: string = "") => {
     if (!user) return;
 
     setPokemonLoading(true);
     try {
+      const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
       const response = await fetch(
         `${
           process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
-        }/pokemon?page=${page}&limit=60`,
+        }/pokemon?page=${page}&limit=60${searchParam}`,
         {
           credentials: "include",
         }
@@ -195,7 +200,7 @@ export default function DashboardPage() {
 
   const handleCardClick = (pokemon: Pokemon) => {
     if (!pokemon.isOwned) {
-      return; // Simply do nothing for unowned cards
+      return;
     }
     fetchPokemonDetails(pokemon.pokeApiId);
   };
@@ -203,6 +208,22 @@ export default function DashboardPage() {
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedPokemon(null);
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    setCurrentPage(1);
+
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+
+    const newTimeout = setTimeout(() => {
+      fetchPokemon(1, value);
+    }, 300);
+
+    setSearchTimeout(newTimeout);
   };
 
   const fetchDrawStatus = async () => {
@@ -241,8 +262,8 @@ export default function DashboardPage() {
       if (response.ok) {
         const data = await response.json();
         setDrawResult(data);
-        fetchDrawStatus(); // Refresh draw status
-        fetchPokemon(currentPage); // Refresh Pokemon list to update owned status
+        fetchDrawStatus();
+        fetchPokemon(currentPage, searchTerm);
       }
     } catch (error) {
       console.error("Error performing draw:", error);
@@ -283,9 +304,34 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Your Pokémon Collection
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 mb-4">
             {pokemonData?.pagination.total || 0} Pokémon discovered
           </p>
+
+          <div className="relative max-w-md">
+            <input
+              type="text"
+              placeholder="Search Pokémon..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              className="w-full px-4 py-3 pl-12 text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+            />
+            <div className="absolute inset-y-0 left-0 flex items-center pl-4">
+              <svg
+                className="w-5 h-5 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+          </div>
         </div>
 
         <div className="bg-gradient-to-r from-blue-100 to-purple-100 rounded-xl p-6 mb-8">
@@ -366,7 +412,6 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {/* Dismiss button */}
             <div className="flex justify-center mt-6">
               <button
                 onClick={() => setDrawResult(null)}

@@ -128,8 +128,9 @@ app.get(
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
+      const search = req.query.search as string;
 
-      const result = await getPokemonList(page, limit, req.user.id);
+      const result = await getPokemonList(page, limit, req.user.id, search);
       res.json(result);
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });

@@ -190,11 +190,12 @@ export const initializePokemonData = async () => {
 export const getPokemonList = async (
   page: number = 1,
   limit: number = 20,
-  userId?: number
+  userId?: number,
+  search?: string
 ) => {
   const offset = (page - 1) * limit;
 
-  const pokemonList = await db
+  let query = db
     .select({
       id: pokemon.id,
       pokeApiId: pokemon.pokeApiId,
@@ -206,9 +207,16 @@ export const getPokemonList = async (
       height: pokemon.height,
       weight: pokemon.weight,
     })
-    .from(pokemon)
-    .limit(limit)
-    .offset(offset);
+    .from(pokemon);
+
+  // Add search filter if search term is provided
+  if (search && search.trim() !== "") {
+    query = query.where(
+      sql`LOWER(${pokemon.name}) LIKE LOWER(${"%" + search.trim() + "%"})`
+    );
+  }
+
+  const pokemonList = await query.limit(limit).offset(offset);
 
   const pokemonWithStats = await Promise.all(
     pokemonList.map(async (poke: any) => {
@@ -247,15 +255,23 @@ export const getPokemonList = async (
     })
   );
 
-  const totalPokemon = await db.select().from(pokemon);
+  // Get total count with search filter applied
+  let totalQuery = db.select({ count: sql`count(*)` }).from(pokemon);
+  if (search && search.trim() !== "") {
+    totalQuery = totalQuery.where(
+      sql`LOWER(${pokemon.name}) LIKE LOWER(${"%" + search.trim() + "%"})`
+    );
+  }
+  const totalResult = await totalQuery;
+  const total = Number(totalResult[0].count);
 
   return {
     pokemon: pokemonWithStats,
     pagination: {
       page,
       limit,
-      total: totalPokemon.length,
-      totalPages: Math.ceil(totalPokemon.length / limit),
+      total: total,
+      totalPages: Math.ceil(total / limit),
     },
   };
 };
@@ -329,7 +345,6 @@ export const performDailyDraw = async (userId: number) => {
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  // Check if user has already drawn today
   const existingDraw = await db
     .select()
     .from(dailyDraws)
@@ -342,7 +357,7 @@ export const performDailyDraw = async (userId: number) => {
     )
     .limit(1);
 
-  if (existingDraw.length > 0 && existingDraw[0].cardsDrawn >= 20) {
+  if (existingDraw.length > 0 && existingDraw[0].cardsDrawn >= 200) {
     return {
       success: false,
       message: "Daily draw limit reached. Come back tomorrow!",
@@ -353,7 +368,7 @@ export const performDailyDraw = async (userId: number) => {
 
   const currentDrawCount =
     existingDraw.length > 0 ? existingDraw[0].cardsDrawn : 0;
-  const remainingDraws = Math.max(0, 20 - currentDrawCount);
+  const remainingDraws = Math.max(0, 200 - currentDrawCount);
 
   if (remainingDraws === 0) {
     return {
@@ -468,7 +483,7 @@ export const getUserDrawStatus = async (userId: number) => {
     .limit(1);
 
   const cardsDrawn = existingDraw.length > 0 ? existingDraw[0].cardsDrawn : 0;
-  const remainingDraws = Math.max(0, 20 - cardsDrawn);
+  const remainingDraws = Math.max(0, 200 - cardsDrawn);
 
   return {
     cardsDrawn,

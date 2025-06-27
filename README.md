@@ -2,7 +2,7 @@
 
 A Pokémon card collection application built with Next.js and Express.js.
 
-![alt text](image.png)
+![alt text](documentation/image.png)
 
 ## Features
 

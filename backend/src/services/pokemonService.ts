@@ -9,6 +9,9 @@ import {
   pokemonForms,
   pokemonPastTypes,
   pokemonPastAbilities,
+  type Pokemon,
+  type PokemonStat,
+  type PokemonType,
 } from "../db/schema/index.js";
 
 export let db: any;
@@ -193,15 +196,38 @@ export const getPokemonList = async (page: number = 1, limit: number = 20) => {
       spriteDefault: pokemon.spriteDefault,
       spriteShiny: pokemon.spriteShiny,
       spriteOfficialArtwork: pokemon.spriteOfficialArtwork,
+      baseExperience: pokemon.baseExperience,
+      height: pokemon.height,
+      weight: pokemon.weight,
     })
     .from(pokemon)
     .limit(limit)
     .offset(offset);
 
+  const pokemonWithStats = await Promise.all(
+    pokemonList.map(async (poke: any) => {
+      const stats = await db
+        .select()
+        .from(pokemonStats)
+        .where(eq(pokemonStats.pokemonId, poke.id));
+
+      const types = await db
+        .select()
+        .from(pokemonTypes)
+        .where(eq(pokemonTypes.pokemonId, poke.id));
+
+      return {
+        ...poke,
+        stats,
+        types,
+      };
+    })
+  );
+
   const totalPokemon = await db.select().from(pokemon);
 
   return {
-    pokemon: pokemonList,
+    pokemon: pokemonWithStats,
     pagination: {
       page,
       limit,

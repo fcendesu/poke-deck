@@ -5,6 +5,21 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import PokemonCard from "../../components/PokemonCard";
 
+interface PokemonStat {
+  id: number;
+  pokemonId: number;
+  statName: string;
+  baseStat: number;
+  effort: number;
+}
+
+interface PokemonType {
+  id: number;
+  pokemonId: number;
+  slot: number;
+  typeName: string;
+}
+
 interface Pokemon {
   id: number;
   pokeApiId: number;
@@ -12,6 +27,11 @@ interface Pokemon {
   spriteDefault: string;
   spriteShiny: string;
   spriteOfficialArtwork: string;
+  baseExperience?: number;
+  height?: number;
+  weight?: number;
+  stats?: PokemonStat[];
+  types?: PokemonType[];
 }
 
 interface PokemonResponse {
@@ -120,7 +140,6 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <Link href="/" className="text-2xl font-bold text-gray-800">
@@ -130,7 +149,7 @@ export default function DashboardPage() {
             <span className="text-gray-600">Welcome, {user?.name}!</span>
             <button
               onClick={handleSignOut}
-              className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
+              className="inline-block bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-xl px-4 py-2 rounded-xl hover:from-yellow-500 hover:to-orange-600 transition-all duration-300 transform hover:scale-105 shadow-lg font-semibold"
             >
               Sign Out
             </button>
@@ -138,8 +157,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-[1600px] mx-auto px-6 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Your Pokémon Collection
@@ -149,7 +167,6 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Pokemon Grid */}
         {pokemonLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>

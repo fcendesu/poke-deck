@@ -22,7 +22,6 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Database setup
 const pool = new Pool({
   connectionString:
     process.env.DATABASE_URL ||
@@ -35,7 +34,6 @@ const pool = new Pool({
 
 export const db = drizzle(pool);
 
-// Initialize services with database
 setPokemonServiceDb(db);
 setAuthServiceDb(db);
 
@@ -160,6 +158,5 @@ app.get(
 );
 
 app.listen(PORT, () => {
-  // Initialize Pokemon data on startup
   initializePokemonData();
 });

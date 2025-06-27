@@ -28,10 +28,9 @@ export const magicLinks = pgTable("magic_links", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Enhanced Pokemon table with full PokeAPI data
 export const pokemon = pgTable("pokemon", {
   id: serial("id").primaryKey(),
-  pokeApiId: integer("poke_api_id").notNull().unique(), // The ID from PokeAPI
+  pokeApiId: integer("poke_api_id").notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
   baseExperience: integer("base_experience"),
   height: integer("height"), // in decimeters
@@ -39,7 +38,6 @@ export const pokemon = pgTable("pokemon", {
   order: integer("order"),
   isDefault: boolean("is_default").default(true),
 
-  // Sprites - most commonly used ones
   spriteDefault: text("sprite_default"),
   spriteShiny: text("sprite_shiny"),
   spriteOfficialArtwork: text("sprite_official_artwork"),
@@ -47,23 +45,20 @@ export const pokemon = pgTable("pokemon", {
   spriteHome: text("sprite_home"),
   spriteHomeShiny: text("sprite_home_shiny"),
 
-  // Species and cries
   speciesName: varchar("species_name", { length: 255 }),
   speciesUrl: text("species_url"),
   criesLatest: text("cries_latest"),
   criesLegacy: text("cries_legacy"),
 
-  // JSON fields for complex data
-  allSprites: json("all_sprites"), // Complete sprites object
-  gameIndices: json("game_indices"), // Array of game indices
-  heldItems: json("held_items"), // Array of held items
+  allSprites: json("all_sprites"),
+  gameIndices: json("game_indices"),
+  heldItems: json("held_items"),
   locationAreaEncounters: text("location_area_encounters"),
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Pokemon Types (since a Pokemon can have 1-2 types)
 export const pokemonTypes = pgTable("pokemon_types", {
   id: serial("id").primaryKey(),
   pokemonId: integer("pokemon_id")
@@ -88,7 +83,6 @@ export const pokemonStats = pgTable("pokemon_stats", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Pokemon Abilities
 export const pokemonAbilities = pgTable("pokemon_abilities", {
   id: serial("id").primaryKey(),
   pokemonId: integer("pokemon_id")
@@ -101,7 +95,6 @@ export const pokemonAbilities = pgTable("pokemon_abilities", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Pokemon Moves (this will be a large table)
 export const pokemonMoves = pgTable("pokemon_moves", {
   id: serial("id").primaryKey(),
   pokemonId: integer("pokemon_id")
@@ -109,11 +102,10 @@ export const pokemonMoves = pgTable("pokemon_moves", {
     .notNull(),
   moveName: varchar("move_name", { length: 100 }).notNull(),
   moveUrl: text("move_url"),
-  versionGroupDetails: json("version_group_details"), // Array of version group details
+  versionGroupDetails: json("version_group_details"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Pokemon Forms
 export const pokemonForms = pgTable("pokemon_forms", {
   id: serial("id").primaryKey(),
   pokemonId: integer("pokemon_id")
@@ -124,7 +116,6 @@ export const pokemonForms = pgTable("pokemon_forms", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Pokemon Past Types (for Pokemon that had different types in previous generations)
 export const pokemonPastTypes = pgTable("pokemon_past_types", {
   id: serial("id").primaryKey(),
   pokemonId: integer("pokemon_id")
@@ -132,11 +123,10 @@ export const pokemonPastTypes = pgTable("pokemon_past_types", {
     .notNull(),
   generationName: varchar("generation_name", { length: 50 }).notNull(),
   generationUrl: text("generation_url"),
-  types: json("types"), // Array of types for that generation
+  types: json("types"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Pokemon Past Abilities
 export const pokemonPastAbilities = pgTable("pokemon_past_abilities", {
   id: serial("id").primaryKey(),
   pokemonId: integer("pokemon_id")
@@ -144,7 +134,7 @@ export const pokemonPastAbilities = pgTable("pokemon_past_abilities", {
     .notNull(),
   generationName: varchar("generation_name", { length: 50 }).notNull(),
   generationUrl: text("generation_url"),
-  abilities: json("abilities"), // Array of abilities for that generation
+  abilities: json("abilities"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -183,7 +173,6 @@ export const dailyDraws = pgTable("daily_draws", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Type definitions
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type MagicLink = typeof magicLinks.$inferSelect;

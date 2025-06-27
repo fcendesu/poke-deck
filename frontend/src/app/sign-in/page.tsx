@@ -1,13 +1,39 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [randomPokemon, setRandomPokemon] = useState<any>(null);
+
+  useEffect(() => {
+    fetchRandomPokemon();
+  }, []);
+
+  const fetchRandomPokemon = async () => {
+    try {
+      // Get a random Pokemon ID between 1 and 1025
+      const randomId = Math.floor(Math.random() * 1025) + 1;
+      const response = await fetch(
+        `https://pokeapi.co/api/v2/pokemon/${randomId}`
+      );
+
+      if (response.ok) {
+        const pokemonData = await response.json();
+        setRandomPokemon(pokemonData);
+      }
+    } catch (error) {
+      console.error("Failed to fetch random Pokemon:", error);
+    }
+  };
+
+  const capitalizeFirstLetter = (string: string) => {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+  };
 
   const handleMagicLinkSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,8 +79,26 @@ export default function SignInPage() {
 
   return (
     <div className="min-h-screen flex">
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-800 p-12 flex-col justify-center">
-        <div className="max-w-md mx-auto text-center">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-800 p-16 flex-col justify-center relative overflow-hidden">
+        {randomPokemon && (
+          <div className="absolute inset-0 flex items-center justify-center opacity-20">
+            <div className="relative">
+              <img
+                src={
+                  randomPokemon.sprites?.other?.showdown?.front_default ||
+                  randomPokemon.sprites?.other?.["official-artwork"]
+                    ?.front_default ||
+                  randomPokemon.sprites?.front_default
+                }
+                alt={randomPokemon.name}
+                className="w-72 h-72 object-contain animate-bounce"
+                style={{ animationDuration: "3s" }}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="max-w-md mx-auto text-center relative z-10">
           <div className="mb-8">
             <Link href="/" className="text-white text-4xl font-bold">
               ⚡ PokéDeck

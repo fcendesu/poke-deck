@@ -44,10 +44,9 @@ export default function VerifyPage() {
         setMessage(data.message);
         setUser(data.user);
 
-        // Redirect to dashboard after 2 seconds
         setTimeout(() => {
           router.push("/dashboard");
-        }, 500);
+        }, 300);
       } else {
         setStatus("error");
         setMessage(data.error || "Verification failed");

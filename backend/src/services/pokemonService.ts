@@ -49,7 +49,6 @@ export const initializePokemonData = async () => {
 
       const pokemonDetails = await Promise.all(pokemonPromises);
 
-      // Insert Pokemon data into database
       for (const pokemonData of pokemonDetails) {
         if (!pokemonData) continue;
 
@@ -178,7 +177,6 @@ export const initializePokemonData = async () => {
         } catch (dbError) {}
       }
 
-      // Add a small delay between batches
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   } catch (error) {}

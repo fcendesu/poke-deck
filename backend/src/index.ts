@@ -17,12 +17,7 @@ import {
   verifyMagicLink,
   setAuthServiceDb,
 } from "./services/authService.js";
-import {
-  createBattle,
-  performMove,
-  getUserBattleStats,
-  setBattleServiceDb,
-} from "./services/battleService.js";
+
 import { authenticateToken, AuthenticatedRequest } from "./middleware/auth.js";
 
 dotenv.config();
@@ -44,7 +39,6 @@ export const db = drizzle(pool);
 
 setPokemonServiceDb(db);
 setAuthServiceDb(db);
-setBattleServiceDb(db);
 
 // Middleware
 app.use(
@@ -203,99 +197,31 @@ app.get(
   }
 );
 
-// Create battle
-app.post(
-  "/api/battle",
-  authenticateToken,
-  async (req: AuthenticatedRequest, res) => {
-    try {
-      const { opponentId } = req.body;
-      const result = await createBattle(req.user.id, opponentId);
-      res.json(result);
-    } catch (error) {
-      res.status(500).json({ error: "Internal server error" });
-    }
-  }
-);
-
-app.post(
-  "/api/battle/start",
-  authenticateToken,
-  async (req: AuthenticatedRequest, res) => {
-    try {
-      const { team } = req.body;
-
-      if (!team || !Array.isArray(team) || team.length !== 3) {
-        res
-          .status(400)
-          .json({ error: "Team must contain exactly 3 Pokémon IDs" });
-        return;
-      }
-
-      const battle = await createBattle(req.user.id, team);
-      res.json(battle);
-    } catch (error: any) {
-      console.error("Battle start error:", error);
-      res
-        .status(500)
-        .json({ error: error.message || "Failed to start battle" });
-    }
-  }
-);
-
-app.post(
-  "/api/battle/move",
-  authenticateToken,
-  async (req: AuthenticatedRequest, res) => {
-    try {
-      const { moveIndex } = req.body;
-
-      if (typeof moveIndex !== "number" || moveIndex < 0 || moveIndex > 3) {
-        res.status(400).json({ error: "Invalid move index" });
-        return;
-      }
-
-      const battle = await performMove(req.user.id, moveIndex);
-      res.json(battle);
-    } catch (error: any) {
-      console.error("Battle move error:", error);
-      res
-        .status(500)
-        .json({ error: error.message || "Failed to perform move" });
-    }
-  }
-);
-
-app.get(
-  "/api/battle/stats",
-  authenticateToken,
-  async (req: AuthenticatedRequest, res) => {
-    try {
-      const stats = await getUserBattleStats(req.user.id);
-      res.json(stats);
-    } catch (error) {
-      console.error("Battle stats error:", error);
-      res.status(500).json({ error: "Failed to get battle stats" });
-    }
-  }
-);
-
 // Database connection health check with retry
 const waitForDatabase = async (maxRetries = 30, retryInterval = 2000) => {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`🔌 Attempting database connection (${attempt}/${maxRetries})...`);
+      console.log(
+        `🔌 Attempting database connection (${attempt}/${maxRetries})...`
+      );
       // Simple query to test connection
       await db.execute("SELECT 1");
       console.log("✅ Database connection established!");
       return true;
     } catch (error) {
-      console.log(`❌ Database connection attempt ${attempt} failed. Retrying in ${retryInterval/1000}s...`);
+      console.log(
+        `❌ Database connection attempt ${attempt} failed. Retrying in ${
+          retryInterval / 1000
+        }s...`
+      );
       if (attempt === maxRetries) {
-        console.error("💥 Failed to connect to database after all retries:", error);
+        console.error(
+          "💥 Failed to connect to database after all retries:",
+          error
+        );
         throw error;
       }
-      await new Promise(resolve => setTimeout(resolve, retryInterval));
+      await new Promise((resolve) => setTimeout(resolve, retryInterval));
     }
   }
 };
@@ -303,25 +229,27 @@ const waitForDatabase = async (maxRetries = 30, retryInterval = 2000) => {
 app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
-  
+
   try {
     console.log("🔌 Waiting for database connection...");
     await waitForDatabase();
-    
+
     console.log("�️  Running database migrations...");
     const { migrate } = await import("drizzle-orm/node-postgres/migrator");
     const { join } = await import("path");
-    
-    await migrate(db, { 
-      migrationsFolder: join(process.cwd(), "drizzle") 
+
+    await migrate(db, {
+      migrationsFolder: join(process.cwd(), "drizzle"),
     });
     console.log("✅ Database migrations completed!");
-    
+
     console.log("�🔧 Initializing Pokémon data...");
     await initializePokemonData();
     console.log("✅ Pokémon data initialization complete!");
   } catch (error) {
     console.error("❌ Failed during backend initialization:", error);
-    console.log("⚠️  Server will continue running, but some features may not be available");
+    console.log(
+      "⚠️  Server will continue running, but some features may not be available"
+    );
   }
 });
